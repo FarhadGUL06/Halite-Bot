@@ -1,5 +1,5 @@
 # Halim-Bot
 Contribuabili:
-1. GAFI
+1. Alus
 2. Eduard Petcovici PETCU
-3. Meruata
+3. Ciochi
