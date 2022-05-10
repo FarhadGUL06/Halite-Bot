@@ -1,0 +1,10 @@
+ --- Init ---
+Error: Could not find or load main class MyBot
+ --- Bot used 124 milliseconds ---
+-----------------------------------------------------------------------------
+ --- Frame #1 ---
+Caused by: java.lang.ClassNotFoundException: MyBot
+ --- Bot used 0 milliseconds ---
+ERRORED!
+Response received (if any):
+Caused by: java.lang.ClassNotFoundException: MyBot

@@ -12,7 +12,8 @@ public class MyBot {
 
         Networking.sendInit("MyJavaBot");
         int check = 0;
-
+        int dx[] = {-1, 0, 1, 0};
+        int dy[] = {0, -1, 0, 1};
         while(true) {
             List<Move> moves = new ArrayList<Move>();
             ArrayList<Location> newCells = new ArrayList<>();
@@ -39,8 +40,36 @@ public class MyBot {
                 for (i = 0; i < cells.size();  i++) {
                     final Location location = cells.get(i);
                     final Site site = location.getSite();
-                    
+                    final Location bestLocation;
+                    int scoreEnemy = Integer.MAX_VALUE;
+                    float scoreNeutral = 0;
+                    if (site.strength < 6 * site.production) {
+                        moves.add(new Move(location, Direction.STILL));
+                        continue;
+                    }
                     if (site.owner == myID) {
+                        for (i = 0; i <= 3; i++) {
+                            final Location loc = gameMap.getLocation(location, Direction.CARDINALS[i+1]);
+                            final Site sitDirectie = loc.getSite();
+                            if (sitDirectie.owner != myID && sitDirectie.owner != 0 
+                                    && sitDirectie.strength < site.strength) {
+                                    if (sitDirectie.strength < scoreEnemy)
+                                        bestLocation = loc;
+                                    continue;
+                            }
+                            if (sitDirectie.owner == 0) {
+                                if ((float) sitDirectie.production / 
+                                    (float) sitDirectie.strength > scoreNeutral) {
+                                    if (scoreEnemy == Integer.MAX_VALUE)
+                                        bestLocation = loc;
+                                }
+                            }
+                        }
+                        if (scoreEnemy == Integer.MAX_VALUE && scoreNeutral == 0)
+                            moves.add(new Move(location, Direction.STILL));
+                        else
+                            moves.add(new Move(location, bestLocation));
+                        /*
                         final Location left = gameMap.getLocation(location, Direction.WEST);
                         final Site leftCell = left.getSite();
     
@@ -121,8 +150,10 @@ public class MyBot {
 
                             continue;
                         }
-                        moves.add(new Move(location, Direction.STILL));
+                        */
+                        //moves.add(new Move(location, Direction.STILL));
                     }
+
                 }
                 cells.addAll(newCells);
                 newCells.clear();
