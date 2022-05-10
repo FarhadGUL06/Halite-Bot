@@ -36,122 +36,53 @@ public class MyBot {
             }
 
             if (check == 1) {
-                int i;
+                int i, bestJ = 0;
                 for (i = 0; i < cells.size();  i++) {
                     final Location location = cells.get(i);
                     final Site site = location.getSite();
-                    final Location bestLocation;
+                    Location bestLocation = location;
                     int scoreEnemy = Integer.MAX_VALUE;
                     float scoreNeutral = 0;
-                    if (site.strength < 6 * site.production) {
-                        moves.add(new Move(location, Direction.STILL));
-                        continue;
-                    }
                     if (site.owner == myID) {
-                        for (i = 0; i <= 3; i++) {
-                            final Location loc = gameMap.getLocation(location, Direction.CARDINALS[i+1]);
+                        if (site.strength < 6 * site.production) {
+                            moves.add(new Move(location, Direction.STILL));
+                            continue;
+                        }
+                        for (int j = 0; j <= 3; j++) {
+                            final Location loc = gameMap.getLocation(location, Direction.CARDINALS[j]);
                             final Site sitDirectie = loc.getSite();
                             if (sitDirectie.owner != myID && sitDirectie.owner != 0 
                                     && sitDirectie.strength < site.strength) {
-                                    if (sitDirectie.strength < scoreEnemy)
+                                    if (sitDirectie.strength < scoreEnemy) {
                                         bestLocation = loc;
+                                        bestJ = j;
+                                    }
                                     continue;
                             }
                             if (sitDirectie.owner == 0) {
                                 if ((float) sitDirectie.production / 
-                                    (float) sitDirectie.strength > scoreNeutral) {
-                                    if (scoreEnemy == Integer.MAX_VALUE)
+                                    (float) sitDirectie.strength > scoreNeutral && 
+                                    sitDirectie.strength < site.strength) {
+                                    if (scoreEnemy == Integer.MAX_VALUE) {
                                         bestLocation = loc;
+                                        scoreNeutral = (float) sitDirectie.production / 
+                                                       (float) sitDirectie.strength;
+                                        bestJ = j;
+                                    }
                                 }
                             }
                         }
                         if (scoreEnemy == Integer.MAX_VALUE && scoreNeutral == 0)
                             moves.add(new Move(location, Direction.STILL));
-                        else
-                            moves.add(new Move(location, bestLocation));
-                        /*
-                        final Location left = gameMap.getLocation(location, Direction.WEST);
-                        final Site leftCell = left.getSite();
-    
-                        final Location right = gameMap.getLocation(location, Direction.EAST);
-                        final Site rightCell = right.getSite();
-    
-                        final Location up = gameMap.getLocation(location, Direction.NORTH);
-                        final Site upCell = up.getSite();
-    
-                        final Location down = gameMap.getLocation(location, Direction.SOUTH);
-                        final Site downCell = down.getSite();
-                        
-                        if (site.strength > 70) {
-                            if (rightCell.strength < site.strength) {
-                                moves.add(new Move(location, Direction.EAST));
-                                if (rightCell.owner != myID) {
-                                    rightCell.owner = myID;
-                                    newCells.add(right);
-                                }
-                                continue;
-                            }
-                            if (downCell.strength < site.strength) {
-                                moves.add(new Move(location, Direction.SOUTH));
-                                if (downCell.owner != myID) {
-                                    downCell.owner = myID;
-                                    newCells.add(down);
-                                }
-                                continue;
-                            }
-                            if (upCell.strength < site.strength) {
-                                moves.add(new Move(location, Direction.NORTH));
-                                if (upCell.owner != myID) {
-                                    upCell.owner = myID;
-                                    newCells.add(up);
-                                }
-                                continue;
-                            }
-                            if (leftCell.strength < site.strength) {
-                                moves.add(new Move(location, Direction.WEST));
-                                if (leftCell.owner != myID) {
-                                    leftCell.owner = myID;
-                                    newCells.add(left);
-                                }
-                                continue;
-                            }
+                        else {
+                       
+                        final Site bestSite = bestLocation.getSite();
+                        if (bestSite.owner != myID) {
+                            newCells.add(bestLocation);
+                            bestSite.owner = myID;
                         }
-
-                        if (leftCell.strength < site.strength && leftCell.owner!=myID) {
-                            moves.add(new Move(location, Direction.WEST));
-                            if (leftCell.owner != myID) {
-                                leftCell.owner = myID;
-                                newCells.add(left);
-                            }
-                            continue;
+                        moves.add(new Move(location, Direction.CARDINALS[bestJ]));
                         }
-                        if (rightCell.strength < site.strength && rightCell.owner!=myID) {
-                            moves.add(new Move(location, Direction.EAST));
-                            if (rightCell.owner != myID) {
-                                rightCell.owner = myID;
-                                newCells.add(right);
-                            }
-                            continue;
-                        }
-                        if (upCell.strength < site.strength && upCell.owner!=myID) {
-                            moves.add(new Move(location, Direction.NORTH));
-                            if (upCell.owner != myID) {
-                                upCell.owner = myID;
-                                newCells.add(up);
-                            }
-                            continue;
-                        }
-                        if (downCell.strength < site.strength && downCell.owner != myID) {
-                            moves.add(new Move(location, Direction.SOUTH));
-                            if (downCell.owner != myID) {
-                                downCell.owner = myID;
-                                newCells.add(down);
-                            }
-
-                            continue;
-                        }
-                        */
-                        //moves.add(new Move(location, Direction.STILL));
                     }
 
                 }
