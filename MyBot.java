@@ -86,25 +86,41 @@ public class MyBot {
             // peek = head, primul nod din coada
             Location locVecin = PQ.peek();
             PQ.remove();
+            // daca e o solutie mai proasta decat una deja obtinuta, renuntam la ea
             if (discoveryTimeForEachLocation.get(locVecin).timp >= distMin)
                 continue;
+            
             for (int i = 0; i <= 3; i++) {
+                // locQ = locatia derivata in directia i din locVecin 
                 Location locQ = gameMap.getLocation(locVecin, Direction.CARDINALS[i]);
+                if (locVecin.getSite().owner == myID) {
                 pereche_timp_dir PTD;
-                if (locVecin == location)
-                    PTD = new pereche_timp_dir(discoveryTimeForEachLocation.get(locVecin).timp + 1, i);
-                else 
-                    PTD = new pereche_timp_dir
-                         (discoveryTimeForEachLocation.get(locVecin).timp + 1, discoveryTimeForEachLocation.get(locVecin).descoperire);
-                if (!discoveryTimeForEachLocation.containsKey(locQ))
-                    discoveryTimeForEachLocation.put(locQ, PTD);
-                if (is_inside_me(locQ)) {
+                // daca deja am descoperit celula derivata
+                // verificam daca aceasta are un timp mai bun decat timpul deja descoperit
+                // caz in care il modificam
+                if (discoveryTimeForEachLocation.containsKey(locQ)) {
+                    if (discoveryTimeForEachLocation.get(locVecin).timp + 1 <
+                        discoveryTimeForEachLocation.get(locVecin).timp) {
+                        pereche_timp_dir perAux = new pereche_timp_dir
+                                                  (discoveryTimeForEachLocation.get(locVecin).timp + 1,
+                                                   discoveryTimeForEachLocation.get(locVecin).descoperire);
+                        discoveryTimeForEachLocation.replace(locQ, perAux);
+                        PQ.add(locQ);
+                    }
+                } else {
+                    // daca e vecinul sursei de la care am plecat
+                    // aici e problema V
+                    if (locVecin.getX() == location.getX() && locVecin.getY() == location.getY())
+                        PTD = new pereche_timp_dir(discoveryTimeForEachLocation.get(locVecin).timp + 1, i);
+                    else 
+                        PTD = new pereche_timp_dir
+                             (discoveryTimeForEachLocation.get(locVecin).timp + 1, 
+                             discoveryTimeForEachLocation.get(locVecin).descoperire);
+                    if (!discoveryTimeForEachLocation.containsKey(locQ))
+                        discoveryTimeForEachLocation.put(locQ, PTD);
                     PQ.add(locQ);
-                    // locVecin = vecinul lui locQ
-                    // daca locVecin este vecinul locatiei data ca parametru
-                    // atunci salvez directia catre care ma duc intrucat aceasta este definitorie
-                    // in alegerea caii.
                 }
+                } // if is inside , cautam in continuare
                 else {
                     if (discoveryTimeForEachLocation.containsKey(locQ))
                         if (discoveryTimeForEachLocation.get(locQ).timp == distMin) {
@@ -116,7 +132,7 @@ public class MyBot {
                             distMin = discoveryTimeForEachLocation.get(locQ).timp; 
                             bestLocation = locQ;
                         }
-                }
+                } // altfel, verificam solutia obtinuta
             }
         }
         return discoveryTimeForEachLocation.get(bestLocation).descoperire;
@@ -230,7 +246,3 @@ public class MyBot {
         mybot.initial();
     }
 }
-
-
-// PENIS
-// 8======D
