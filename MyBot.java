@@ -1,8 +1,10 @@
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.PriorityQueue;
 import java.util.Queue;
 
 public class MyBot {
@@ -13,7 +15,35 @@ public class MyBot {
     ArrayList<Location> cells;
     HashMap<Location, Integer> isDanger;
     int minX, maxX, minY, maxY;
-
+    int dx[] = {-1, 0, 1, 0};
+    int dy[] = {0, 1, 0, -1};
+    int[][] TableOfSums;
+    int[][] TableOfStrength;
+    int[][] TableOfAttack;
+    boolean underAttack;
+    class PerecheScor {
+        Location loc;
+        int score;
+        public PerecheScor(Location loc, int score) {
+            this.loc = loc;
+            this.score = score;
+        }
+    }
+    class PerecheScorComparator implements Comparator<PerecheScor> {
+        @Override
+        public int compare(MyBot.PerecheScor s1, MyBot.PerecheScor s2) {
+            
+            if (s1.score < s2.score) {
+                return 1;
+            }
+            if (s1.score > s2.score) {
+                return -1;
+            }
+            return 0;
+        }
+    }
+    PriorityQueue <PerecheScor> pq = new PriorityQueue<PerecheScor>(10000, 
+                                         new PerecheScorComparator());
     public MyBot () {
         iPackage = Networking.getInit();
         myID = iPackage.myID;
@@ -25,217 +55,223 @@ public class MyBot {
         minY = gameMap.height;
         maxY = 0;
         isDanger = new HashMap<Location, Integer>();
-    }
-
-    void update_coord(Location besLocation) {
-        int XBest = besLocation.getX();
-        int YBest = besLocation.getY();
-        if (XBest < minX) {
-            minX = XBest;
-        }
-        if (XBest > maxX) {
-            maxX = XBest;
-        }
-        if (YBest < minY) {
-            minY = YBest; 
-        }
-        if (YBest > maxY) {
-            maxY = YBest; 
-        }
-    }
-
-    void start_location () {
-        // Plecarea de pe loc
-        for (int y = 0; y < gameMap.height; y++) {
-                for (int x = 0; x < gameMap.width; x++) {
-                    final Location location = gameMap.getLocation(x, y);
-                    final Site site = location.getSite();
-                    if (site.owner == myID) {
-                        minX = x;
-                        maxX = x;
-                        minY = y;
-                        maxY = y;
-                        cells.add(location);
-                        break;
-                    }
-                }
-            }
-    }
-    class pereche_timp_dir {
-        int timp;
-        int descoperire;
-        public pereche_timp_dir(int timp, int descoperire) {
-            this.descoperire = descoperire;
-            this.timp = timp;
-        }
-    }  
-    double getRaport(Location loc) {
-        return ((double) loc.getSite().production / (double) loc.getSite().strength);
-    }  
-    int inside_me (Location location) {
-        Location bestLocation = location;
-        if (location.getSite().strength < 30) {
-            return -1;
-        }
-        Queue <Location> PQ = new LinkedList<Location>();
-        Map<Location, pereche_timp_dir > discoveryTimeForEachLocation = new HashMap<Location, pereche_timp_dir >();
-        int distMin = 9999999;
-        PQ.add(location);
-        discoveryTimeForEachLocation.put(location, new pereche_timp_dir(0, 0));
-
-        while(!PQ.isEmpty()) {
-            // locQ = locatia scoasa din coada
-            // peek = head, primul nod din coada
-            Location locVecin = PQ.peek();
-            PQ.remove();
-            // daca e o solutie mai proasta decat una deja obtinuta, renuntam la ea
-            if (discoveryTimeForEachLocation.get(locVecin).timp >= distMin)
-                continue;
-            
-            for (int i = 0; i <= 3; i++) {
-                // locQ = locatia derivata in directia i din locVecin 
-                Location locQ = gameMap.getLocation(locVecin, Direction.CARDINALS[i]);
-                if (locVecin.getSite().owner == myID) {
-                pereche_timp_dir PTD;
-                // daca deja am descoperit celula derivata
-                // verificam daca aceasta are un timp mai bun decat timpul deja descoperit
-                // caz in care il modificam
-                if (discoveryTimeForEachLocation.containsKey(locQ)) {
-                    if (discoveryTimeForEachLocation.get(locVecin).timp + 1 <
-                        discoveryTimeForEachLocation.get(locVecin).timp) {
-                        pereche_timp_dir perAux = new pereche_timp_dir
-                                                  (discoveryTimeForEachLocation.get(locVecin).timp + 1,
-                                                   discoveryTimeForEachLocation.get(locVecin).descoperire);
-                        discoveryTimeForEachLocation.replace(locQ, perAux);
-                        PQ.add(locQ);
-                    }
-                } else {
-                    // daca e vecinul sursei de la care am plecat
-                    // aici e problema V
-                    if (locVecin.getX() == location.getX() && locVecin.getY() == location.getY())
-                        PTD = new pereche_timp_dir(discoveryTimeForEachLocation.get(locVecin).timp + 1, i);
-                    else 
-                        PTD = new pereche_timp_dir
-                             (discoveryTimeForEachLocation.get(locVecin).timp + 1, 
-                             discoveryTimeForEachLocation.get(locVecin).descoperire);
-                    if (!discoveryTimeForEachLocation.containsKey(locQ))
-                        discoveryTimeForEachLocation.put(locQ, PTD);
-                    PQ.add(locQ);
-                }
-                } // if is inside , cautam in continuare
-                else {
-                    if (discoveryTimeForEachLocation.containsKey(locQ))
-                        if (discoveryTimeForEachLocation.get(locQ).timp == distMin) {
-                            if (getRaport(locQ) > getRaport(bestLocation))
-                                bestLocation = locQ;
-                        }
-                    if (discoveryTimeForEachLocation.containsKey(locQ))
-                        if (discoveryTimeForEachLocation.get(locQ).timp < distMin) {
-                            distMin = discoveryTimeForEachLocation.get(locQ).timp; 
-                            bestLocation = locQ;
-                        }
-                } // altfel, verificam solutia obtinuta
-            }
-        }
-        return discoveryTimeForEachLocation.get(bestLocation).descoperire;
-        /* 
-            Idei:
-            - observam daca suntem atacati. retinem in ceva pozitiile
-            - cand se intra aici, se verifica lista de amenintari (bataie in desfasurare)
-            - ne mutam spre directia amenintarii in formatie de baricada (o sa gandim)
-            - facem partea cu 0 amenintari
-        */
-    }
-
-    boolean is_inside_me (Location location) {
+        underAttack = false;
+    } 
+    boolean is_on_border (Location location) {
+        Site site = location.getSite();
+        if (site.owner != 0)
+            return false;
         for (int i = 0; i <= 3; i++) {
             Location neigh = gameMap.getLocation(location, Direction.CARDINALS[i]);
             Site neighSite = neigh.getSite();
-            if (neighSite.owner != myID) {
+            if (neighSite.owner == myID) {
+                return true;
+            }
+        }
+        return false;
+    }
+    boolean ally_on_border (Location location) {
+        Site site = location.getSite();
+        // nu e a mea => n-avem ce
+        if (site.owner != myID)
+            return false;
+        for (int i = 0; i <= 3; i++) {
+            Location neigh = gameMap.getLocation(location, Direction.CARDINALS[i]);
+            Site neighSite = neigh.getSite();
+            // vecin cu inamicul => not my problem, se ocupa altii
+            if (neighSite.owner != 0 && neighSite.owner != myID) {
                 return false;
             }
-        }
-        return true;
-    }
-    
-    int is_danger (Location location) {        
-        Location bestLocation = location;
-        if (location.getSite().strength < 30) {
-            return -1;
-        }
-        Queue <Location> PQ = new LinkedList<Location>();
-        Map<Location, pereche_timp_dir > discoveryTimeForEachLocation = new HashMap<Location, pereche_timp_dir >();
-        int distMin = 9999999;
-        PQ.add(location);
-        discoveryTimeForEachLocation.put(location, new pereche_timp_dir(0, 0));
-
-        while(!PQ.isEmpty()) {
-            // locQ = locatia scoasa din coada
-            // peek = head, primul nod din coada
-            Location locVecin = PQ.peek();
-            PQ.remove();
-            // daca e o solutie mai proasta decat una deja obtinuta, renuntam la ea
-            if (discoveryTimeForEachLocation.get(locVecin).timp != distMin &&
-                discoveryTimeForEachLocation.get(locVecin).timp > 5)
-                continue;
-            
-            for (int i = 0; i <= 3; i++) {
-                // locQ = locatia derivata in directia i din locVecin 
-                Location locQ = gameMap.getLocation(locVecin, Direction.CARDINALS[i]);
-                if (isDanger.containsKey(locVecin)) {
-                pereche_timp_dir PTD;
-                // daca deja am descoperit celula derivata
-                // verificam daca aceasta are un timp mai bun decat timpul deja descoperit
-                // caz in care il modificam
-                if (discoveryTimeForEachLocation.containsKey(locQ)) {
-                    if (discoveryTimeForEachLocation.get(locVecin).timp + 1 <
-                        discoveryTimeForEachLocation.get(locVecin).timp) {
-                        pereche_timp_dir perAux = new pereche_timp_dir
-                                                  (discoveryTimeForEachLocation.get(locVecin).timp + 1,
-                                                   discoveryTimeForEachLocation.get(locVecin).descoperire);
-                        discoveryTimeForEachLocation.replace(locQ, perAux);
-                        PQ.add(locQ);
+            // vecin cu celula neutra => ar putea fi celula care ne desparte 
+            // de adversar
+            if (neighSite.owner == 0) {
+                for (int j = 0; j <= 3; j++) {
+                    if (Math.abs(j - i) == 2) 
+                        continue;
+                    Location anotherLoc = gameMap.getLocation(neigh, Direction.CARDINALS[j]);
+                    Site anotherSite = anotherLoc.getSite();
+                    if (anotherSite.owner != 0 && anotherSite.owner != myID) {
+                        return true;
                     }
-                } else {
-                    // daca e vecinul sursei de la care am plecat
-                    // aici e problema V
-                    if (locVecin.getX() == location.getX() && locVecin.getY() == location.getY())
-                        PTD = new pereche_timp_dir(discoveryTimeForEachLocation.get(locVecin).timp + 1, i);
-                    else 
-                        PTD = new pereche_timp_dir
-                             (discoveryTimeForEachLocation.get(locVecin).timp + 1, 
-                             discoveryTimeForEachLocation.get(locVecin).descoperire);
-                    if (!discoveryTimeForEachLocation.containsKey(locQ))
-                        discoveryTimeForEachLocation.put(locQ, PTD);
-                    PQ.add(locQ);
                 }
-                } // if is inside , cautam in continuare
-                else {
-                    if (discoveryTimeForEachLocation.containsKey(locQ))
-                        if (discoveryTimeForEachLocation.get(locQ).timp < distMin) {
-                            distMin = discoveryTimeForEachLocation.get(locQ).timp; 
-                            bestLocation = locQ;
-                        }
-                } // altfel, verificam solutia obtinuta
             }
         }
-        if (discoveryTimeForEachLocation.get(bestLocation).timp > 5)
-            return -1;
-        else
-            if (isDanger.containsKey(bestLocation)) {
-                return discoveryTimeForEachLocation.get(bestLocation).descoperire;
+        return false;
+    }
+    public void UpdateTable() {
+        int height = gameMap.height, width = gameMap.width;
+        for (int y = 0; y < height; ++y) {
+            for (int x = 0; x < width; ++x) {
+                Location location = gameMap.getLocation(x, y);
+                Site site = location.getSite();
+                if (is_on_border(location)) {
+                    TableOfSums[x][y] = site.production * 5 -
+                                        (site.strength * 7 / 10) + 50;
+                    PerecheScor PS = new PerecheScor(location, 
+                                         TableOfSums[x][y]);
+                    pq.add(PS);
+                }
             }
-            else {
+        }
+    }
+    public void initTOS() {
+        int height = gameMap.height, width = gameMap.width;
+        for (int y = 0; y < height; ++y) {
+            for (int x = 0; x < width; ++x) {
+                TableOfSums[x][y] = 0;
+                Location location = gameMap.getLocation(x, y);
+                Site site = location.getSite();
+                TableOfStrength[x][y] = site.strength;
+            }
+        }
+    }
+
+    public void calculateUtilProduction () {
+        int x, y;
+        int height = gameMap.height;
+        int width = gameMap.width;
+        for (y = 0; y < height; ++y) {
+            for (x = 0; x < width; ++x) {
+                Location location = gameMap.getLocation(x, y);
+                Site site = location.getSite();
+                // Eu sunt seful celulei
+                if (site.owner == myID) {
+                    TableOfSums[x][y] = 0;
+                    continue;
+                }
+                // Vom ciurui o celula neutra
+                int scoreCell = 0;
+                int nrVec = 0;
+                for (int i = 0; i < 4; ++i) {
+                    Location locationNeigh = gameMap.getLocation(location, Direction.CARDINALS[i]);
+                    Site siteNeigh = locationNeigh.getSite();
+                    // Sunt seful pe celula vecina
+                    if (siteNeigh.owner == myID) {
+                        continue;
+                    }
+                    nrVec++;
+                    scoreCell += siteNeigh.production * 50 - (siteNeigh.strength * 7 / 10);
+                }
+                // Actualizam scorul pentru celula curenta in functie de scorul vecinilor
+                TableOfSums[location.getX()][location.getY()] = site.production * 50 - (site.strength * 7 / 10);
+                if (nrVec != 0) {
+                    TableOfSums[location.getX()][location.getY()] += (scoreCell / nrVec);
+                }
+            }
+        }
+    }
+
+    public int calculateAttack (int myX, int myY) {
+        // Functie care imi calculeaza distanta minima intre nodul curent si primul inamic
+        int x, y;
+        int direction = -1;
+        int minDistance = 9999;
+        int height = gameMap.height;
+        int width = gameMap.width;
+        // Locatia celulei mele curente
+        Location location = gameMap.getLocation(myX, myY);
+        for (y = 0; y < height; ++y) {
+            for (x = 0; x < width; ++x) {
+                // Locatia si site-ul inamic
+                Location locationEnemy = gameMap.getLocation(x, y);
+                Site siteEnemy = locationEnemy.getSite();
+                if (siteEnemy.owner != myID && siteEnemy.owner != 0) {
+                    // Am gasit o celula inamica
+                    // Calculez care vecin este cel mai aproape de ea
+                    for (int i = 0; i < 4; ++i) {
+                        Location locationNeigh = gameMap.getLocation(location, Direction.CARDINALS[i]);
+                        int distNeigh = Math.abs(locationNeigh.getY()-locationEnemy.getY()) + Math.abs(locationNeigh.getX()-locationEnemy.getX());
+                        //int distNeigh = Math.abs( (Math.abs(height/2 - locationNeigh.getY())) - (Math.abs(height/2 - locationEnemy.getY())) ) +
+                        //                Math.abs( (Math.abs(width/2 - locationNeigh.getX())) - (Math.abs(width/2 - locationEnemy.getX())) );
+                        if (distNeigh < minDistance) {
+                            minDistance = distNeigh;
+                            direction = i;
+                        }
+                    }
+                }
+            }
+        }
+        return direction;
+    }
+
+
+    public void UpdateTableInside() {
+        while(!pq.isEmpty()) {
+            PerecheScor PsAux = pq.peek();
+            pq.poll();
+            Site site = PsAux.loc.getSite();
+            for (int i = 0; i <= 3; ++i) {
+                Location neigh = gameMap.getLocation
+                (PsAux.loc, Direction.CARDINALS[i]);
+                if(neigh.getSite().owner == myID)
+                    {
+                        int yy = neigh.getY();
+                        int xx = neigh.getX();
+                        int exX = PsAux.loc.getX();
+                        int exY = PsAux.loc.getY();
+                        if (TableOfSums[xx][yy] == 0) {
+                            TableOfSums[xx][yy] = 
+                            TableOfSums[exX][exY] - neigh.getSite().production 
+                                                - 2;
+                            PerecheScor BackToPQ = new PerecheScor(neigh,
+                            TableOfSums[xx][yy]);
+                            pq.add(BackToPQ);
+                        }
+                    }
+            }
+        }
+    }
+    class PairForJavaSeven {
+        int scor;
+        int direction;
+        public PairForJavaSeven(int direction, int scor) {
+            this.scor = scor;
+            this.direction = direction;
+        }
+    }
+    class PairForJavaSevenComparator implements Comparator<PairForJavaSeven> {
+        @Override
+        public int compare(MyBot.PairForJavaSeven s1, MyBot.PairForJavaSeven s2) {
+            
+            if (s1.scor < s2.scor) {
+                return 1;
+            }
+            if (s1.scor > s2.scor) {
                 return -1;
             }
+            return 0;
+        }
     }
-    int is_in_danger (Location location) {
-        int dangerType = 99;
-        for (int i = 0; i <= 3; i++) {
+    public int countAllyCells(int dir, Location loc) {
+        Location auxLoc = gameMap.getLocation(loc, Direction.CARDINALS[dir]);
+        Site site = auxLoc.getSite();
+        int count = 0;
+        while (site.owner == myID) {
+            ++count;
+            auxLoc = gameMap.getLocation(auxLoc, Direction.CARDINALS[dir]);
+            if (count > Math.max(gameMap.height, gameMap.width))
+                return 999999;
+            site = auxLoc.getSite();
+        }
+        return count;
+    }
+    public int cross(Location loc) {
+        int i, minCount = 999999, bestDirection = -1, auxValue;
+        for (i = 0; i <= 3; ++i) {
+            auxValue = countAllyCells(i, loc);
+            if (auxValue < minCount) {
+                minCount = auxValue;
+                bestDirection = i; 
+            }
+        }
+        return bestDirection;
+    }
+boolean ItsTimeToStop(Location location) {
+    int dangerType = 99;
+    for (int i = 0; i <= 3; i++) {
             // Vecinii nodului curent
             Location neighOrd1 = gameMap.getLocation(location, Direction.CARDINALS[i]);
             Site neighSite1 = neighOrd1.getSite();
-            //if (!isDanger.containsKey(location)) {
                 if (neighSite1.owner != myID && neighSite1.owner != 0) {
                     // Vecinul de ordinul 1 este inamic!
                     isDanger.put(location, i);
@@ -258,146 +294,134 @@ public class MyBot {
                         dangerType = Math.min(dangerType, 2);
                         //dangerType = 2;
                     }
-                //}
-                for (int k = 0; k <= 3; k++) {
-                    // Vecini vecinilor vecinilor nodului curent
-                    Location neighOrd3 = gameMap.getLocation(neighOrd2, Direction.CARDINALS[k]);
-                    Site neighSite3 = neighOrd3.getSite();
-                    //if (!isDanger.containsKey(location)) {
-                        if (neighSite3.owner != myID && neighSite3.owner != 0) {
-                            // Vecinul de ordinul 3 este inamic!
-                            if (!isDanger.containsKey(location)) {
-                                isDanger.put(location, i);
-                            }
-                            dangerType = Math.min(dangerType, 3);
-                            //dangerType = 3;
-                        }
-                    //}
-                }
             }
-        }
-        return dangerType;
     }
-
+    return true;
+}
+public int nearEnemy(Location loc) {
+    int i, minVal = 9999, minIndex = 10;
+    Site site = loc.getSite();
+    Site AuxSite;
+    Location locAux;
+    for (i = 0; i <= 3; ++i) {
+        locAux = gameMap.getLocation(loc, Direction.CARDINALS[i]);
+        AuxSite = locAux.getSite();
+        if (AuxSite.owner == myID || AuxSite.owner == 0)
+            continue;   
+        underAttack = true;
+        if (site.strength > AuxSite.strength) {
+                minVal = AuxSite.strength;
+                minIndex = i;
+        }
+    }
+    return minIndex;
+}
     public void initial () {
-        // m-am intors
         // Desfasurarea jocului efectiva
+        TableOfSums = new int[1000][1000];
+        TableOfStrength = new int[1000][1000];
+
         Networking.sendInit("OdoBot");
-        start_location();
+        //start_location();
         while(true) {
-            List<Move> moves = new ArrayList<Move>();
-            ArrayList<Location> newCells = new ArrayList<>();
-            Networking.updateFrame(gameMap);
-            int i, bestJ = 0;
-            isDanger.clear();
-            for (i = cells.size() - 1; i >= 0; i--) {
-                final Location location = cells.get(i);
-                final Site site = location.getSite();
+        numberOfFrames++;
+        List<Move> moves = new ArrayList<Move>();
+        Networking.updateFrame(gameMap);
+        // isDanger.clear();
+        initTOS();
+        UpdateTable();
+        UpdateTableInside();
+        //calculateUtilProduction();
+         for (int y = 0; y < gameMap.height; y++) {
+            for (int x = 0; x < gameMap.width; x++) {
+                int finalDirection = -1, maxScore = -99999, finalAdvancedDirection = -1, maxAdvancedScore = -99999;
+                Location location = gameMap.getLocation(x, y);
+                Site site = location.getSite();
+                int checkEnemy;
+                //PriorityQueue <PairForJavaSeven> PFJS = new PriorityQueue<PairForJavaSeven>(5, 
+                  //                              new PairForJavaSevenComparator());
                 if (site.owner != myID) {
-                    //cells.remove(i);
-                    //i--;
-                    continue;
-                }   
-                int rezCell = is_in_danger(location);
-                if (rezCell == 1 || rezCell == 2 || rezCell == 3) {
-                    Location moved = gameMap.getLocation(location, Direction.CARDINALS[isDanger.get(location)]);
-                    Site siteMoved = moved.getSite();
-                    if (siteMoved.owner != myID) {
-                        siteMoved.owner = myID;
-                    }
-                    if (siteMoved.owner == myID) {
-                        moves.add(new Move(location, Direction.CARDINALS[isDanger.get(location)]));
-                    } else {
-                        if (siteMoved.strength < site.strength) {
-                            moves.add(new Move(location, Direction.CARDINALS[isDanger.get(location)]));
-                            newCells.add(moved);
-                        } else {
-                            moves.add(new Move(location, Direction.STILL));
-                        }
-                    }
                     continue;
                 }
-                if (rezCell == 3) {
+                if (site.production > 10 && site.strength < 10 * site.production) {
                     moves.add(new Move(location, Direction.STILL));
                     continue;
                 }
-                // Adaugam in isDanger daca celula este in pericol
-                
-                // Verificam daca o celula este inauntru
-                if (is_inside_me(location)) {
-                    // Este inauntru
-                    int danger_verify = is_danger(location);
-                    if (danger_verify == -1) {
-                        int res = inside_me(location);
-                        if (res == -1) {
-                            moves.add(new Move(location, Direction.STILL));
-                            continue;
-                        } else {
-                            moves.add(new Move(location, Direction.CARDINALS[res]));
-                        }
-                    } else {
-                        moves.add(new Move(location, Direction.CARDINALS[danger_verify]));
-                    }
-                } else {
-                    if (isDanger.containsKey(location)) {
-                        moves.add(new Move(location, Direction.STILL));
-                        continue;
-                    }
-                    Location bestLocation = location;
-                    int scoreEnemy = Integer.MAX_VALUE;
-                    double scoreNeutral = 0.0;
-                    if (site.strength < 6 * site.production) {
-                        moves.add(new Move(location, Direction.STILL));
-                        continue;
-                    }
-                    for (int j = 0; j <= 3; j++) {
-                        final Location loc = gameMap.getLocation(location, Direction.CARDINALS[j]);
-                        final Site sitDirectie = loc.getSite();
-                        // verificare existenta inamic
-                        if (sitDirectie.owner != myID && sitDirectie.owner != 0 
-                                && sitDirectie.strength < site.strength) {
-                                if (sitDirectie.strength < scoreEnemy) {
-                                    bestLocation = loc;
-                                    bestJ = j;
-                                }
-                                continue;
-                        }
-                        if (sitDirectie.owner == 0) {
-                            // obtinerea celei mai bune celule neutre
-                            if ((double) sitDirectie.production / 
-                                (double) sitDirectie.strength > scoreNeutral && 
-                                sitDirectie.strength < site.strength) {
-                                if (scoreEnemy == Integer.MAX_VALUE) {
-                                    bestLocation = loc;
-                                    scoreNeutral = (double) sitDirectie.production / 
-                                                    (double) sitDirectie.strength;
-                                    bestJ = j;
-                                }
-                            }
-                        }
-                    }
-                    if (scoreEnemy == Integer.MAX_VALUE && scoreNeutral == 0) {
-                        moves.add(new Move(location, Direction.STILL));
-                    }
-                    else {
-                        final Site bestSite = bestLocation.getSite();
-                        if (bestSite.owner != myID) {
-                            newCells.add(bestLocation);
-                            bestSite.owner = myID;
-                            // Actualizam extremitatile
-                            update_coord(bestLocation);
-                        }
-                        moves.add(new Move(location, Direction.CARDINALS[bestJ]));
-                    }
+                if (site.strength < 6 * site.production || site.strength < 30) {
+                    moves.add(new Move(location, Direction.STILL));
+                    continue;
                 }
-            }
-            cells.addAll(newCells);
-            newCells.clear();
-            Networking.sendFrame(moves);
-            numberOfFrames = numberOfFrames + 1;
-        }
-    }
+                if (underAttack) {
+                    int directionAttack = calculateAttack(x, y);
+                    //moves.add(new Move(location, Direction.CARDINALS[directionAttack]));
+                    //continue;
+                }
+                if (numberOfFrames > gameMap.width*2) {
+                    checkEnemy = nearEnemy(location);
+                    // miscare celula vecina cu inamic
+                    if (checkEnemy != 10) {
+                        moves.add(new Move(location, Direction.CARDINALS[checkEnemy]));
+                        continue;
+                    }
+                    int FrameBigDir = cross(location);
+                    if (FrameBigDir == -1) {
+                        moves.add(new Move(location, Direction.STILL));
+                    } else {
+                      //  Location locAux = gameMap.getLocation(location, Direction.CARDINALS[FrameBigDir]);
+                    //if (ally_on_border(location) && locAux.getSite().strength > 10)
+                    //    moves.add(new Move(location, Direction.STILL));
+                    //else
+                        moves.add(new Move(location, Direction.CARDINALS[FrameBigDir]));
+                    }
+                    continue;
+                }
+                for (int i = 0; i <= 3; ++i) {
+                    Location LocAux = gameMap.getLocation(location, Direction.CARDINALS[i]);
+                    if (TableOfSums[LocAux.getX()][LocAux.getY()] > maxScore) {
+                        maxScore = TableOfSums[LocAux.getX()][LocAux.getY()];
+                        finalDirection = i;
+                    }
+                    //PairForJavaSeven pair = new PairForJavaSeven(i, TableOfSums[LocAux.getX()][LocAux.getY()]);
+                    //PFJS.add(pair);
+                }
+                Location newLoc;
+                newLoc = gameMap.getLocation(location, Direction.CARDINALS[finalDirection]);
+                if (site.strength <= newLoc.getSite().strength) {
+                    moves.add(new Move(location, Direction.STILL));
+                    continue;
+                }
+                moves.add(new Move(location, Direction.CARDINALS[finalDirection]));
+                /*Site newSite;
+                int i;
+                PairForJavaSeven sch = new PairForJavaSeven(0, 0);
+                for (i = 0; i <= 3; i++) {
+                    //sch = PFJS.peek();
+                    newLoc = gameMap.getLocation(location, Direction.CARDINALS[sch.direction]);
+                    newSite = newLoc.getSite();
+                    if (site.strength <= newLoc.getSite().strength) {
+                        continue;
+                    }
 
+                    if (site.strength + TableOfStrength[newLoc.getX()][newLoc.getY()] > 255 && newSite.owner == myID) {
+                        continue;    
+                    }
+                    //PFJS.poll();
+                    break;
+                }
+                //PFJS.clear();
+                if (i == 4) {
+                    moves.add(new Move(location, Direction.STILL));
+                } else {
+                    newLoc = gameMap.getLocation(location, Direction.CARDINALS[sch.direction]);
+                    TableOfStrength[newLoc.getX()][newLoc.getY()] += site.strength;
+                    TableOfStrength[location.getX()][location.getY()] = 0;
+                    moves.add(new Move(location, Direction.CARDINALS[sch.direction]));
+                }*/
+            } // al doilea for
+         } // primul for
+        Networking.sendFrame(moves);
+         } // while (true)
+    } // final functie
     public static void main(String[] args) throws java.io.IOException {
         MyBot mybot = new MyBot();
         mybot.initial();
